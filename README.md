@@ -8,11 +8,16 @@ Per eseguire il programma da terminale:
    source ~/Scrivania/upmem-sdk/upmem_env.sh simulator
    ```
 4. Modificare la varibile ```rootdir``` all'interno di ```run.py``` con il path della repo nel proprio dispositivo.
-5. Eseguire il programma tramite lo script ```run.py``` specificando l'applicazione da eseguire:
+5. Per eseguire il programma:
+   + su un dataset di punti casuali eseguire lo script ```run.py``` specificando l'applicazione da eseguire e la modalità d'esecuzione:
    ```
-   python3 run.py KCC
+   python3 run.py KCC UINT32
    ```
-
+   + su un database di punti già esistente eseguire lo script come indicato a seguire:
+    ```
+   python3 run.py DB 'full-path-to-db'
+   ```
+   Il database in questione deve contenere un punto per ogni riga, con cordinate separate da virgole. Sono supportati valori di tipo ```float```.
 
 # Note sul codice
 
@@ -29,9 +34,9 @@ I risultati di ogni test sono riportati nella cartella ```/profile``` creata qua
 # TODO
 I problemi noti/elementi da rivedere sono segnalati nel codice con un conmmento ```//TODO: ...```<br>
 I principali problemi noti al momento sono:
-+ Gestione di un'undefined behavior nel file ```app.c``` (commento riga 154).
-+ Mancato utilizzo di dataset esterni per verificare l'effettiva correttezza dell'algoritmo.
 + Implementazione della funzione che calcola la distanza tra i vari punti: dataset contenenti punti con valori e/o dimensione elevati generano overflow usando la distanza di Minkowski. Al momento questo problema viene evitato limitando la dimensione massima ad 5 e il valore massimo di ogni punto ad 1000.
-+ Largo utilizzo di moltiplicazioni all'interno del codice che viene eseguito nelle DPU (sono operazioni molto costose). Questo è in parte risolvibile tramite l'utilizzo di operazioni di bitshift ove possibile.
-+ Implementazione di timer per verificare i tempi di esecuzione dell'argoritmo su CPU e su DPU: il simulatore permette infatti di contare accuratemente solo il numero di istruzioni effettuate.
 + Sistema di verifica dei risultati genera "falsi negativi": nel caso in cui più centri candidati avessero la stessa distanza minima, l'host e le DPU potrebbero restituire risultati diversi (anche se matematicamente analoghi). Questo è particolarmente evidente quando la dimensione è pari ad 1 ed il numero di collisione è elevato.
++ ~~Gestione di un'undefined behavior nel file ```app.c``` (commento riga 154).~~
++ ~~Mancato utilizzo di dataset esterni per verificare l'effettiva correttezza dell'algoritmo.~~
++ ~~Largo utilizzo di moltiplicazioni all'interno del codice che viene eseguito nelle DPU (sono operazioni molto costose). Questo è in parte risolvibile tramite l'utilizzo di operazioni di bitshift ove possibile.~~
++ ~~Implementazione di timer per verificare i tempi di esecuzione dell'argoritmo su CPU e su DPU: il simulatore permette infatti di contare accuratemente solo il numero di istruzioni effettuate.~~

@@ -4,15 +4,25 @@ import random
 
 rootdir = "/home/francesco/Scrivania/Tesi/Clustering" #Path della repo "Clustering" sul dispositivo
 
-applications = {"KCC"   : ["NR_DPUS=X NR_TASKLETS=Y BL=Z TYPE=UINT32 make -B all", "./bin/host_app -n #points -k #centers -d #dimensions"]}
+applications = {"KCC"   : ["NR_DPUS=X NR_TASKLETS=W BL=Z TYPE=F make -B all", "./bin/host_app -w 1 -e 3 -n #points -k #centers -d #dimensions"],
+                "DB"    : ["NR_DPUS=64 NR_TASKLETS=16 BL=512 TYPE=FLOAT make -B all", "./bin/host_app -w 1 -e 3 -p #db-path -k 10"]}
 
-def run(app_name):
+types = ["UINT32", "UINT64", "INT32", "INT64", "FLOAT", "DOUBLE", "CHAR", "SHORT"]
+
+def run_app(app_name, run_type):
 
     if (app_name not in applications):
         print("Application: '" + app_name + "' not avaible.")
         print("Avaible applications:")
         for key, _ in applications.items():
             print(key)
+        return
+
+    if (run_type not in types):
+        print("Run type: '" + run_type + "' not avaible.")
+        print("Avaible types:")
+        for t in types:
+            print(t)
         return
 
     print ("------------------------ Running: "+app_name+" ----------------------")
@@ -36,8 +46,9 @@ def run(app_name):
     for d in NR_DPUS:
         for i, t in enumerate(NR_TASKLETS):
             m = make_cmd.replace("X", str(d))
-            m = m.replace("Y", str(t))
+            m = m.replace("W", str(t))
             m = m.replace("Z", BLOCK_LENGTH[i])
+            m = m.replace("F", run_type)
             
             os.system(m)
 
@@ -67,16 +78,52 @@ def run(app_name):
             os.system(r_cmd)
 
 
+def run_db(db):
+
+    make_cmd = applications["DB"][0]
+    run_cmd = applications["DB"][1]
+
+    os.chdir(rootdir + "/DB")
+    
+    os.system("make clean")
+    
+    os.mkdir(rootdir + "/DB/bin")
+    os.mkdir(rootdir + "/DB/profile")
+
+    os.system(make_cmd)
+
+    file_name = rootdir + "/DB/profile/db_results.txt"
+    f = open(file_name, "a")
+    f.write("Allocated 64 DPU(s)\n")
+    f.write("NR_TASKLETS 16 BLOCK_LENGTH 512\n")
+    f.write("Database path: " + db + "\n\n")
+    f.close()
+
+    run_cmd = run_cmd.replace("#db-path", db)
+
+    print("Running: " + run_cmd)
+    run_cmd = run_cmd + " >> " + file_name
+    os.system(run_cmd)
+
+
 def main():
-    if (len(sys.argv) < 2):
-        print ("Usage: python3 " + sys.argv[0] + " 'application_name'")
-        print ("Applications avaiable:")
+    if (len(sys.argv) < 3):
+        print("Usage: python3 " + sys.argv[0] + " 'application_name' 'type or db-path'")
+        print("Applications avaiable:")
         for key, _ in applications.items():
             print(key)
-        return 
+        print("Avaiable types:")
+        for t in types:
+            print(t)
+        print("<db-path>")
+        return
 
     app = sys.argv[1]
-    run(app)
+
+    if (app == "DB"):
+        run_db(sys.argv[2])
+    else:
+        run_app(app, sys.argv[2])
 
 if __name__ == "__main__":
     main()

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include <unistd.h>
 #include <getopt.h>
 #include <time.h>
@@ -15,15 +16,6 @@
 #define DPU_BINARY "./bin/dpu_code"
 #endif
 
-#if defined(FLOAT) || defined(DOUBLE)
-T my_rand(int max) {
-        return max*((T)rand()/(T)RAND_MAX);
-}
-#else
-T my_rand(int max) {
-        return (T)(rand()%max);
-}
-#endif
 
 //Buffer contenente tutti i punti.
 static T* P; 
@@ -37,12 +29,26 @@ static T* H; //Buffer centri finali host.
 static T* M; //Buffer "centri intermedi" host.
 
 
-//Crea casualmente le cordinate dei punti.
-static void init_dataset(T* points_buffer, uint32_t n, uint32_t d) {
-    srand(time(NULL));
-    for (unsigned int i = 0; i < n*d; i++) {
-        points_buffer[i] = my_rand(1000); //Restringo il range di numeri per evitare overflow.
+//Legge i valori dal database fornito.
+static void init_dataset(T* points_buffer, char *path) {
+    FILE *db = fopen(path, "r");
+
+    int i = 0;
+    char row[100];
+    char *num;
+
+    while (feof(db) != true) {
+        fgets(row, 100, db);
+        num = strtok(row, ",");
+
+        while(num != NULL) {
+            points_buffer[i++] = atof(num);
+            num = strtok(NULL, ",");
+        }
+
     }
+    
+    fclose(db);
 }
 
 //Estrae "n_points" centri da "points_buffer" inserrendoli in "centers_buffer".
@@ -109,7 +115,8 @@ int main(int argc, char **argv) {
 
     //Parametri per l'esecuzione del benchmark: #punti, #centri, dimensione dello spazio e #ripetizioni effettuate.
     struct Params p = input_params(argc, argv);
-    
+    if (p.n_points == 0) return -1; //Il file non è stato aperto correttamente.
+
     struct dpu_set_t dpu_set, dpu;
 
     Timer timer;
@@ -127,7 +134,7 @@ int main(int argc, char **argv) {
 
     //Inizializzo buffer dei punti usato dalle DPU e successivamente dall'host.
     P = malloc(points_per_dpu*p.n_centers*p.dim*sizeof(T)*(NR_DPUS-1) + mem_block_per_dpu_8bytes*sizeof(T));
-    init_dataset(P, p.n_points, p.dim);
+    init_dataset(P, p.db);
     
     //Indici usati per accedere in MRAM e recuperare i centri intermedi dalle DPU.
     //La dimensione del blocco che vado a copiare deve essere allineata su 8 bytes.
@@ -253,6 +260,9 @@ int main(int argc, char **argv) {
     print(&timer, 2, p.n_reps);
     printf("\tCPU: ");
     print(&timer, 3, p.n_reps);
+
+    printf("\n\nCentri finali:\n");
+    print_points(C, p.n_centers, p.dim);
 
     free(H);
     free(M);

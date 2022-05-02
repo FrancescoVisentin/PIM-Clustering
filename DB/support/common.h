@@ -110,10 +110,10 @@ void print_points(T* points_set, uint32_t n_centers, uint32_t dim) {
             printf("Centro: %d [", i);
             for (unsigned int k = 0; k < dim; k++) {
                 if(k == 0) {
-                    printf("%d", points_set[i*dim + k]);
+                    printf("%f", points_set[i*dim + k]);
                     continue;
                 }
-                printf(", %d", points_set[i*dim + k]);
+                printf(", %f", points_set[i*dim + k]);
             }
             printf("]\n");
         }
