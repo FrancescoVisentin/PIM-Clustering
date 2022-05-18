@@ -9,6 +9,7 @@ struct Params {
     uint32_t n_points;
     uint32_t n_centers;
     uint32_t dim;
+    bool rnd_first;
 };
 
 static void usage() {
@@ -35,9 +36,10 @@ struct Params input_params(int argc, char **argv) {
 
     p.n_warmup = 1;
     p.n_reps = 3;
+    p.rnd_first = false;
 
     int opt;
-    while((opt = getopt(argc, argv, "hw:e:n:k:d:")) != -1) {
+    while((opt = getopt(argc, argv, "hrw:e:n:k:d:")) != -1) {
         switch (opt) {
             case 'h':
                 usage();
@@ -47,6 +49,7 @@ struct Params input_params(int argc, char **argv) {
             case 'n': p.n_points    = atoi(optarg); break;
             case 'k': p.n_centers   = atoi(optarg); break;
             case 'd': p.dim         = atoi(optarg); break;
+            case 'r': p.rnd_first   = true; break;
             default:
                 fprintf(stderr, "\nUrecognized option!\n");
                 usage();

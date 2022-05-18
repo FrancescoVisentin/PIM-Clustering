@@ -19,13 +19,12 @@ MUTEX_INIT(my_mutex);
 static T* centers_set;
 static uint32_t n_centers_found = 0;
 static D max_distance = 0;
-static uint32_t rep = 0;
 
 static D get_furthest_point(T* buffer, uint32_t n_points, uint32_t dim, T* candidate_center, D candidate_center_dist) {
     
     for (unsigned int i = 0; i < n_points; i++) {
         uint32_t point_index = i*dim; //Riduco numero di moltiplicazioni effettuate.
-        D min_center_dist = UINT32_MAX;
+        D min_center_dist = INIT_VAL;
         
         for(unsigned int j = 0; j < n_centers_found; j++) {
             uint32_t center_index = j*dim;
@@ -56,21 +55,19 @@ int main() {
     uint32_t n_centers = DPU_INPUT_ARGUMENTS.n_centers;
     uint32_t dim = DPU_INPUT_ARGUMENTS.dim;
     uint32_t dpu_mem_size = DPU_INPUT_ARGUMENTS.mem_size;
+    uint32_t first_offset = DPU_INPUT_ARGUMENTS.first_center_offset;
 
 
-    if (tasklet_id == 0) {
-        if (rep++ > 0) {
-            //Resetto varibili globali.
-            n_centers_found = 0;
-            max_distance = 0;
-        }
-        
+    if (tasklet_id == 0) {        
         mem_reset();
         centers_set = (T*) mem_alloc((n_centers*dim) << T_SHIFT);
 
         //Il primo punto è scelto come primo centro.
-        mram_read(DPU_MRAM_HEAP_POINTER, centers_set, roundup((dim << T_SHIFT), 8));
-        n_centers_found++;
+        mram_read(DPU_MRAM_HEAP_POINTER + first_offset, centers_set, roundup((dim << T_SHIFT), 8));
+
+        //Resetto varibili globali.
+        n_centers_found = 1;
+        max_distance = 0;
     }
 
     barrier_wait(&my_barrier_1);
@@ -154,13 +151,6 @@ int main() {
         //Resetto barriere per prossime esecuzioni.
         my_barrier_1.count = NR_TASKLETS;
         my_barrier_2.count = NR_TASKLETS;
-
-        #if PRINT
-            {
-            //Stampo i centri calcolati per verifica.
-            print_points(centers_set, n_centers, dim);
-            }
-        #endif
     }
     
     return 0;

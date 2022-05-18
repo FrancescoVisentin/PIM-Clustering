@@ -1,9 +1,6 @@
 #ifndef _COMMON_H
 #define _COMMON_H
 
-//Se impostato ad 1 le DPU stampano i centri calcolati.
-#define PRINT 0
-
 //Definisco i vari tipi.
 #ifdef UINT32
 #define T uint32_t
@@ -48,42 +45,9 @@ struct dpu_arguments_t {
     uint32_t n_centers;
     uint32_t dim;
     uint32_t mem_size;
+    uint32_t first_center_offset;
 
 };
-
-#if defined(FLOAT) || defined(DOUBLE)
-    D f_pow(T base, uint32_t exp){
-        D temp;
-        if(exp == 0) 
-            return 1; 
-        temp = f_pow(base, exp / 2); 
-        if (exp & 1)
-            return base * temp * temp;
-        else
-            return temp * temp;
-    }
-
-    //Calcola |a-b|^exp.
-    D power(T a, T b, uint32_t exp) {
-        D base = (a > b) ? a-b : b-a;
-        return f_pow(base, exp);
-    }
-#else
-    //Calcola |a-b|^exp usando l'esponenziazione per quadratura.
-    D power(T a, T b, uint32_t exp) {
-        T base = (a >= b) ? a-b : b-a;
-        D res = 1;
-        while (exp > 0) {
-            if (exp & 1) {
-                res *= base;
-            }
-            exp >>= 1;
-            base *= base;
-        }
-
-        return res;
-    }
-#endif
 
 //Ritorna il multiplo di point_dim più vicino ad BLOCK_SIZE ed divisibile per 8.
 uint32_t get_block_size(uint32_t point_dim) {
@@ -105,18 +69,57 @@ uint32_t get_block_size(uint32_t point_dim) {
     return lcm;
 }
 
-void print_points(T* points_set, uint32_t n_centers, uint32_t dim) {
-    for (unsigned int i=0; i < n_centers; i++) {
-            printf("Centro: %d [", i);
-            for (unsigned int k = 0; k < dim; k++) {
-                if(k == 0) {
-                    printf("%d", points_set[i*dim + k]);
-                    continue;
-                }
-                printf(", %d", points_set[i*dim + k]);
+
+//Funzioni adattate al tipo run time.
+#if defined(FLOAT) || defined(DOUBLE)
+    #define INIT_VAL 18446744073709551616.0
+
+    D f_pow(T base, uint32_t exp){
+        D temp;
+        if(exp == 0) 
+            return 1; 
+        temp = f_pow(base, exp / 2); 
+        if (exp & 1)
+            return base * temp * temp;
+        else
+            return temp * temp;
+    }
+
+    //Calcola |a-b|^exp.
+    D power(T a, T b, uint32_t exp) {
+        D base = (a > b) ? a-b : b-a;
+        return f_pow(base, exp);
+    }
+
+    //Wrapper di printf per stampare i risultati finali.
+    void print_res(bool s, unsigned int r, double dpu_cost, double cpu_cost) {
+        if(s) printf("Rep %d: Outputs are equal\t DPU cost: %f\t Linear cost: %f\n", r, dpu_cost, cpu_cost);
+        else  printf("Rep %d: Outputs are different!\t DPU cost: %f\t Linear cost: %f\n", r, dpu_cost, cpu_cost);
+    }
+#else
+    #define _INIT_VAL_(c) c ## ULL
+    #define INIT_VAL (_INIT_VAL_(18446744073709551615))
+
+    //Calcola |a-b|^exp usando l'esponenziazione per quadratura.
+    D power(T a, T b, uint32_t exp) {
+        D base = (a >= b) ? a-b : b-a;
+        D res = 1;
+        while (exp > 0) {
+            if (exp & 1) {
+                res *= base;
             }
-            printf("]\n");
+            exp >>= 1;
+            base *= base;
         }
-}
+
+        return res;
+    }
+
+    //Wrapper di printf per stampare i risultati finali.
+    void print_res(bool s, unsigned int r, uint64_t dpu_cost, uint64_t cpu_cost) {
+        if(s) printf("Rep %d: Outputs are equal\t DPU cost: %lu\t Linear cost: %lu\n", r, dpu_cost, cpu_cost);
+        else  printf("Rep %d: Outputs are different!\t DPU cost: %lu\t Linear cost: %lu\n", r, dpu_cost, cpu_cost);
+    }
+#endif
 
 #endif
